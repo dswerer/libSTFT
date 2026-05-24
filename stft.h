@@ -16,7 +16,10 @@
 using json=nlohmann::json;
 
 namespace dSTFT{
-
+    enum LoadMode{
+        FILE,MEMORY
+    };
+    
     class SoundFile{
         private:
         SNDFILE* sndfile;
@@ -115,15 +118,15 @@ namespace dSTFT{
         bool seek(uint32_t n) override;
         uint32_t presentFrame() override;
         metadata meta() override;
-        SpctFromFile(FILE* _file,json _meta);
-        SpctFromFile(FILE* _file,metadata _meta);
+        SpctFromFile(std::FILE* _file,json _meta);
+        SpctFromFile(std::FILE* _file,metadata _meta);
         ~SpctFromFile() override;
         private:
         metadata __meta;
         uint32_t frame;
         size_t readCount;
-        FILE* fp;
-        FILE* fprandom;
+        std::FILE* fp;
+        std::FILE* fprandom;
         double* obuf;
     };
 
@@ -157,6 +160,7 @@ namespace dSTFT{
         int LoadToFile();
         SpctCollected LoadToMemory();
         static SpctCollected CollectFromFile(std::string fileName);
+        SpctCollected Load(LoadMode mode);
         // ~Loader();
     };
 }
