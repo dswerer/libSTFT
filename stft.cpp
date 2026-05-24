@@ -77,7 +77,7 @@ std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
     fftw_execute(plan);
     std::vector<double> outputSeries;
     for(uint32_t i=0;i<this->frameSize;i++){
-        outputSeries.push_back(log10(out[i][0]*out[i][0]+out[i][1]*out[i][1]));
+        outputSeries.push_back((out[i][0]*out[i][0]+out[i][1]*out[i][1]));
     }
     return outputSeries;
 }
@@ -182,9 +182,9 @@ SpctCollected Loader::CollectFromFile(std::string fileName){
 
     for (int i = 0; i < channels; ++i) {
         std::string specFile = fileName + "-c" + std::to_string(i);
-        FILE* fpSpec = fopen(specFile.c_str(), "rb");
+        std::FILE* fpSpec = fopen(specFile.c_str(), "rb");
         std::string psFile = fileName + "-c" + std::to_string(i) + "-ps";
-        FILE* fpPs = fopen(psFile.c_str(), "rb");
+        std::FILE* fpPs = fopen(psFile.c_str(), "rb");
         if(!fpSpec||!fpPs){
             std::cerr<<"SPECTRUM NOT COMPLETE\n";
             return result;
@@ -210,8 +210,8 @@ int Loader::LoadToFile(){
     putchar('\r');
     printf("|");
     
-    std::vector<FILE*> spectrum;
-    std::vector<FILE*> presum;
+    std::vector<std::FILE*> spectrum;
+    std::vector<std::FILE*> presum;
     for(int i=0;i<meta.at("channels");i++){
         spectrum.push_back(fopen((cdt.soundFile.fileName+"-c"+std::to_string(i)).c_str(),"wb"));
         presum.push_back(fopen((cdt.soundFile.fileName+"-c"+std::to_string(i)+"-ps").c_str(),"wb"));        
@@ -245,7 +245,7 @@ int Loader::LoadToFile(){
         }
     }
 
-    for(FILE* f : spectrum){
+    for(std::FILE* f : spectrum){
         fclose(f);
     }
 
@@ -317,13 +317,21 @@ SpctCollected Loader::LoadToMemory(){
     return o;
 }
 
+SpctCollected Loader::Load(LoadMode mode){
+    if(mode==LoadMode::FILE){
+        LoadToFile();
+        return CollectFromFile(cdt.soundFile.fileName);
+    }else if(mode==LoadMode::MEMORY){
+        return LoadToMemory();
+    }
+}
 
-SpctFromFile::SpctFromFile(FILE* _file,metadata _data){
+SpctFromFile::SpctFromFile(std::FILE* _file,metadata _data){
     this->__meta=_data;
     fp=_file;
     obuf=new double[_data.bitCount];
 }
-SpctFromFile::SpctFromFile(FILE* _file,json _data){
+SpctFromFile::SpctFromFile(std::FILE* _file,json _data){
     this->__meta.bitCount=_data.at("bitCount");
     this->__meta.frames=_data.at("frames");
     this->__meta.samplerate=_data.at("samplerate");
