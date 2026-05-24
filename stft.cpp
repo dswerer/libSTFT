@@ -1,5 +1,5 @@
 #include"stft.h"
-
+using namespace dSTFT;
 SoundFile::SoundFile(const char* fileName){
     // SF_INFO info;
     this->available=false;
@@ -161,7 +161,7 @@ Loader::Loader(SoundFile sf):cdt(std::move(sf),1024,2048){
 }
 
 SpctCollected Loader::CollectFromFile(std::string fileName){
-     SpctCollected result;
+    SpctCollected result;
     result.valid = false;
 
     std::string metaFile = fileName + "-meta.json";
