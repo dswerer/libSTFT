@@ -137,7 +137,7 @@ namespace dSTFT{
         bool seek(uint32_t n) override;
         uint32_t presentFrame() override;
         metadata meta() override;
-        SpctFromMemory(std::vector<double*>&& data);
+        SpctFromMemory(std::vector<double*>&& data,metadata meta);
         ~SpctFromMemory() override;
         private:
         std::vector<double*> data;

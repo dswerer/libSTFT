@@ -309,8 +309,8 @@ SpctCollected Loader::LoadToMemory(){
     for(int i=0;i<m__.at("channels");i++){
         // SpctFromMemory chi(std::move(channels[i]));
         // SpctFromMemory psi(std::move(presum[i]));
-        o.channel.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(std::move(channels[i]))));
-        o.presum.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(std::move(presum[i]))));
+        o.channel.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(std::move(channels[i]),meta)));
+        o.presum.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(std::move(presum[i]),meta)));
     }
     o.valid=true;
     putchar('\n');
@@ -363,7 +363,7 @@ const double* SpctFromFile::readNextFrame(){
 
 SpctFromFile::~SpctFromFile(){
     fclose(fp);
-    delete obuf;
+    delete[] obuf;
 }
 
 uint32_t SpctFromFile::presentFrame(){
@@ -374,8 +374,8 @@ Spectrum::metadata SpctFromFile::meta(){
     return __meta;
 }
 
-SpctFromMemory::SpctFromMemory(std::vector<double*>&& _data):
-data(std::move(_data)),frame(0){}
+SpctFromMemory::SpctFromMemory(std::vector<double*>&& _data,metadata meta):
+data(std::move(_data)),frame(0),__meta(meta){}
 
 const double* SpctFromMemory::operator[](int i){
     return data[i];
