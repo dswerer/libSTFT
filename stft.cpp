@@ -175,6 +175,7 @@ SpctCollected Loader::CollectFromFile(std::string fileName){
     result.meta.bitCount = metaJson.at("bitCount").get<uint32_t>();
     result.meta.frames   = metaJson.at("frames").get<uint32_t>();
     result.meta.samplerate = metaJson.at("samplerate").get<uint32_t>();
+    result.meta.stride=metaJson.at("stride").get<uint32_t>();
     int channels = metaJson.at("channels").get<int>();
 
     result.channel.reserve(channels);
@@ -259,6 +260,7 @@ SpctCollected Loader::LoadToMemory(){
     meta.bitCount=m__.at("bitCount");
     meta.frames=m__.at("frames");
     meta.samplerate=m__.at("samplerate");
+    meta.stride=m__.at("stride");
 
     SpctCollected o;
     o.meta=meta;
@@ -335,6 +337,8 @@ SpctFromFile::SpctFromFile(std::FILE* _file,json _data){
     this->__meta.bitCount=_data.at("bitCount");
     this->__meta.frames=_data.at("frames");
     this->__meta.samplerate=_data.at("samplerate");
+    this->__meta.stride=_data.at("stride");
+    
     fp=_file;
     obuf=new double[__meta.bitCount];
 }

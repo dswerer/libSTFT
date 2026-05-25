@@ -95,6 +95,7 @@ namespace dSTFT{
             uint32_t bitCount;
             uint32_t samplerate;
             uint32_t frames;
+            uint32_t stride;
         }metadata;
         virtual const double* operator [](int i)=0;
         virtual const double* readNextFrame()=0;
