@@ -92,7 +92,7 @@ namespace dSTFT{
     class Spectrum{
         public:
         typedef struct {
-            uint32_t bitCount;
+            uint32_t binCount;
             uint32_t samplerate;
             uint32_t frames;
             uint32_t stride;

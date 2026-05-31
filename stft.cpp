@@ -116,7 +116,7 @@ json Conductor::loadMeta(){
     meta["samplerate"]=soundFile.info->samplerate;
     meta["stride"]=this->stride;
     meta["frameSize"]=this->frameSize;
-    meta["bitCount"]=frameSize/2+1;
+    meta["binCount"]=frameSize/2+1;
     return meta;
 }
 
@@ -172,7 +172,7 @@ SpctCollected Loader::CollectFromFile(std::string fileName){
     }
     json metaJson;
     metaStream>>metaJson;
-    result.meta.bitCount = metaJson.at("bitCount").get<uint32_t>();
+    result.meta.binCount = metaJson.at("binCount").get<uint32_t>();
     result.meta.frames   = metaJson.at("frames").get<uint32_t>();
     result.meta.samplerate = metaJson.at("samplerate").get<uint32_t>();
     result.meta.stride=metaJson.at("stride").get<uint32_t>();
@@ -257,7 +257,7 @@ int Loader::LoadToFile(){
 SpctCollected Loader::LoadToMemory(){
     json m__=cdt.loadMeta();
     Spectrum::metadata meta; 
-    meta.bitCount=m__.at("bitCount");
+    meta.binCount=m__.at("binCount");
     meta.frames=m__.at("frames");
     meta.samplerate=m__.at("samplerate");
     meta.stride=m__.at("stride");
@@ -288,11 +288,11 @@ SpctCollected Loader::LoadToMemory(){
         if(data.size()==0) break;
 
         for(int i=0;i<m__.at("channels");i++){
-            double* ch=new double[meta.bitCount]();
-            double* ps=new double[meta.bitCount]();
-            memcpy(ch,data[i].data(),meta.bitCount*sizeof(double));
+            double* ch=new double[meta.binCount]();
+            double* ps=new double[meta.binCount]();
+            memcpy(ch,data[i].data(),meta.binCount*sizeof(double));
             double sum=0.0f;
-            for(int j=0;j<meta.bitCount;j++){
+            for(int j=0;j<meta.binCount;j++){
                 sum+=data[i][j];
                 ps[j]=sum;
             }
@@ -331,21 +331,21 @@ SpctCollected Loader::Load(LoadMode mode){
 SpctFromFile::SpctFromFile(std::FILE* _file,metadata _data){
     this->__meta=_data;
     fp=_file;
-    obuf=new double[_data.bitCount];
+    obuf=new double[_data.binCount];
 }
 SpctFromFile::SpctFromFile(std::FILE* _file,json _data){
-    this->__meta.bitCount=_data.at("bitCount");
+    this->__meta.binCount=_data.at("binCount");
     this->__meta.frames=_data.at("frames");
     this->__meta.samplerate=_data.at("samplerate");
     this->__meta.stride=_data.at("stride");
     
     fp=_file;
-    obuf=new double[__meta.bitCount];
+    obuf=new double[__meta.binCount];
 }
 
 bool SpctFromFile::seek(uint32_t n){
     frame=n;
-    return !fseek(fp,n*__meta.bitCount*sizeof(double),SEEK_SET);
+    return !fseek(fp,n*__meta.binCount*sizeof(double),SEEK_SET);
 }
 
 const double* SpctFromFile::operator[](int i){
@@ -354,13 +354,13 @@ const double* SpctFromFile::operator[](int i){
         readCount=0;
         return nullptr;
     }
-    readCount=fread(obuf,sizeof(double),__meta.bitCount,fp);
+    readCount=fread(obuf,sizeof(double),__meta.binCount,fp);
     seek(n);
     return this->obuf;
 }
 
 const double* SpctFromFile::readNextFrame(){
-    readCount=fread(obuf,sizeof(double),__meta.bitCount,fp);
+    readCount=fread(obuf,sizeof(double),__meta.binCount,fp);
     frame++;
     return this->obuf;
 }
