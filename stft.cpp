@@ -71,7 +71,7 @@ void SoundFile::printInfo(){
 
 std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
     for(uint32_t i=0;i<this->frameSize;i++){
-        in[i][0]=inputSeries[i];
+        in[i][0]=inputSeries[i]*window[i];
         in[i][1]=0.;
     }
     fftw_execute(plan);
@@ -407,4 +407,21 @@ SpctFromMemory::~SpctFromMemory(){
 
 Spectrum::metadata SpctFromMemory::meta(){
     return __meta;
+}
+
+#define m_PI 3.1415926
+void Loader::hanning(double* target,int n){
+    if(n<=0) return;
+    if(n==1) target[0]=1.;
+    double N=double(n-1);
+    for(int i=0;i<n;i++){
+        target[i]=0.5*(1.0-cos(2.0*m_PI*i/N));
+    }
+}
+
+void Loader::setWindow(WindowType type){
+    if(type==none) return;
+    if(type==hann){
+        hanning(cdt.window,cdt.frameSize);
+    }
 }
