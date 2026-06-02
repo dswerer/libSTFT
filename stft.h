@@ -19,6 +19,9 @@ namespace dSTFT{
     enum LoadMode{
         FILE,MEMORY
     };
+    enum WindowType{
+        none,hann
+    };
     
     class SoundFile{
         private:
@@ -48,13 +51,14 @@ namespace dSTFT{
     class Conductor{
         private:
         uint32_t stride;
-        uint32_t frameSize;
         uint32_t frameCount;
         uint32_t frameMax;
         fftw_complex *in;
         fftw_complex *out;
         fftw_plan plan;
         public:
+        double* window;
+        uint32_t frameSize;
         SoundFile soundFile;
         uint8_t end;
         bool available;
@@ -82,6 +86,11 @@ namespace dSTFT{
             }
             frameMax=(soundFile.info->frames-frameSize)/stride;
             available=true;
+
+            window=new double[_frameSize];
+            for(int i=0;i<_frameSize;i++){
+                window[i]=1.;
+            }
         }
         std::vector<double> doFFT(std::vector<double> inputSeries);
         std::vector<std::vector<double>> nextFrameFFT();
@@ -162,6 +171,9 @@ namespace dSTFT{
         SpctCollected LoadToMemory();
         static SpctCollected CollectFromFile(std::string fileName);
         SpctCollected Load(LoadMode mode);
+        void setWindow(WindowType type);
+
+        static void hanning(double* target,int n);
         // ~Loader();
     };
 }
