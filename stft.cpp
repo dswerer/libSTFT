@@ -191,8 +191,8 @@ SpctCollected Loader::CollectFromFile(std::string fileName){
             return result;
         }
 
-        result.channel.push_back(std::unique_ptr<SpctFromFile>(new SpctFromFile(fpSpec,result.meta)));
-        result.presum.push_back(std::make_unique<SpctFromFile>(fpPs, result.meta));
+        result.channel.push_back(std::unique_ptr<SpctFromFile>(new SpctFromFile(fpSpec,result.meta,specFile)));
+        result.presum.push_back(std::make_unique<SpctFromFile>(fpPs, result.meta,psFile));
     }
 
     result.valid = true;
@@ -265,8 +265,11 @@ SpctCollected Loader::LoadToMemory(){
     SpctCollected o;
     o.meta=meta;
 
-    std::vector<std::vector<double*>> channels;
-    std::vector<std::vector<double*>> presum;
+    std::vector<std::vector<double*>>* basec=new std::vector<std::vector<double*>>();
+    std::vector<std::vector<double*>>* basep=new std::vector<std::vector<double*>>();
+
+    std::vector<std::vector<double*>>& channels=*basec;
+    std::vector<std::vector<double*>>& presum=*basep;
     for(int i=0;i<m__.at("channels");i++){
         channels.push_back(std::vector<double*>());
         presum.push_back(std::vector<double*>());
@@ -311,8 +314,8 @@ SpctCollected Loader::LoadToMemory(){
     for(int i=0;i<m__.at("channels");i++){
         // SpctFromMemory chi(std::move(channels[i]));
         // SpctFromMemory psi(std::move(presum[i]));
-        o.channel.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(std::move(channels[i]),meta)));
-        o.presum.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(std::move(presum[i]),meta)));
+        o.channel.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(&channels[i],meta)));
+        o.presum.push_back(std::unique_ptr<SpctFromMemory>(new SpctFromMemory(&presum[i],meta)));
     }
     o.valid=true;
     putchar('\n');
@@ -328,19 +331,27 @@ SpctCollected Loader::Load(LoadMode mode){
     }
 }
 
-SpctFromFile::SpctFromFile(std::FILE* _file,metadata _data){
+SpctFromFile::SpctFromFile(std::FILE* _file,metadata _data,std::string _name){
     this->__meta=_data;
     fp=_file;
+    this->name.assign(_name);
     obuf=new double[_data.binCount];
 }
-SpctFromFile::SpctFromFile(std::FILE* _file,json _data){
+SpctFromFile::SpctFromFile(std::FILE* _file,json _data,std::string _name){
     this->__meta.binCount=_data.at("binCount");
     this->__meta.frames=_data.at("frames");
     this->__meta.samplerate=_data.at("samplerate");
     this->__meta.stride=_data.at("stride");
     
+    this->name.assign(_name);
     fp=_file;
     obuf=new double[__meta.binCount];
+}
+
+Spectrum* SpctFromFile::copyHandle(){
+    std::FILE* nfp=fopen(name.c_str(),"rb");
+    SpctFromFile* n=new SpctFromFile(nfp,this->__meta,name);
+    return n;
 }
 
 bool SpctFromFile::seek(uint32_t n){
@@ -349,13 +360,11 @@ bool SpctFromFile::seek(uint32_t n){
 }
 
 const double* SpctFromFile::operator[](int i){
-    int n=frame;
     if(!seek(i)){
         readCount=0;
         return nullptr;
     }
     readCount=fread(obuf,sizeof(double),__meta.binCount,fp);
-    seek(n);
     return this->obuf;
 }
 
@@ -378,20 +387,21 @@ Spectrum::metadata SpctFromFile::meta(){
     return __meta;
 }
 
-SpctFromMemory::SpctFromMemory(std::vector<double*>&& _data,metadata meta):
-data(std::move(_data)),frame(0),__meta(meta){}
+SpctFromMemory::SpctFromMemory(std::vector<double*>* _data,metadata meta):
+data(_data),frame(0),__meta(meta){}
 
 const double* SpctFromMemory::operator[](int i){
-    return data[i];
+    frame=i;
+    return (*data)[i];
 }
 
 const double* SpctFromMemory::readNextFrame(){
-    return data[frame++];
+    return (*data)[frame++];
 }
 
 bool SpctFromMemory::seek(uint32_t n){
     frame=n;
-    if(frame>data.size()) return false;
+    if(frame>(*data).size()) return false;
     return true;
 }
 
@@ -400,9 +410,13 @@ uint32_t SpctFromMemory::presentFrame(){
 }
 
 SpctFromMemory::~SpctFromMemory(){
-    for(auto& d:data){
+    for(auto& d:*data){
         delete[] d;
     }
+}
+
+Spectrum* SpctFromMemory::copyHandle(){
+    return new SpctFromMemory(data,__meta);
 }
 
 Spectrum::metadata SpctFromMemory::meta(){

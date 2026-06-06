@@ -111,6 +111,7 @@ namespace dSTFT{
         virtual bool seek(uint32_t n)=0;
         virtual uint32_t presentFrame()=0;
         virtual metadata meta()=0;
+        virtual Spectrum* copyHandle()=0;
         virtual ~Spectrum(){}
     };
 
@@ -128,10 +129,12 @@ namespace dSTFT{
         bool seek(uint32_t n) override;
         uint32_t presentFrame() override;
         metadata meta() override;
-        SpctFromFile(std::FILE* _file,json _meta);
-        SpctFromFile(std::FILE* _file,metadata _meta);
+        Spectrum* copyHandle() override;
+        SpctFromFile(std::FILE* _file,json _meta,std::string _name);
+        SpctFromFile(std::FILE* _file,metadata _meta,std::string _name);
         ~SpctFromFile() override;
         private:
+        std::string name;
         metadata __meta;
         uint32_t frame;
         size_t readCount;
@@ -147,10 +150,11 @@ namespace dSTFT{
         bool seek(uint32_t n) override;
         uint32_t presentFrame() override;
         metadata meta() override;
-        SpctFromMemory(std::vector<double*>&& data,metadata meta);
+        Spectrum* copyHandle() override;
+        SpctFromMemory(std::vector<double*>* data,metadata meta);
         ~SpctFromMemory() override;
         private:
-        std::vector<double*> data;
+        std::vector<double*>* data;
         uint32_t frame;
         metadata __meta;
     };
