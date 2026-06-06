@@ -17,7 +17,7 @@ using json=nlohmann::json;
 
 namespace dSTFT{
     enum LoadMode{
-        FILE,MEMORY
+        FILE,MEMORY,RUNTIME
     };
     enum WindowType{
         none,hann
@@ -44,24 +44,27 @@ namespace dSTFT{
 
         //this function splits the output of ReadChunk
         std::vector<std::vector<double>> SplitChannels(std::vector<double> rawFrames);
+        std::vector<double> getChannel(std::vector<double>& rawFrames,uint8_t channelId);
         void printInfo();
         ~SoundFile();
     };
 
     class Conductor{
         private:
-        uint32_t stride;
-        uint32_t frameCount;
-        uint32_t frameMax;
+        
         fftw_complex *in;
         fftw_complex *out;
         fftw_plan plan;
         public:
+        uint32_t frameMax;
+        uint32_t stride;
+        uint32_t frameCount;
         double* window;
         uint32_t frameSize;
         SoundFile soundFile;
         uint8_t end;
         bool available;
+        bool doLog;
         Conductor(SoundFile&& _soundfile,uint32_t _stride,uint32_t _frameSize)
         :soundFile(std::move(_soundfile)),stride(_stride),frameSize(_frameSize),
         frameCount(0),end(0){
@@ -86,15 +89,18 @@ namespace dSTFT{
             }
             frameMax=(soundFile.info->frames-frameSize)/stride;
             available=true;
+            doLog=true;
 
             window=new double[_frameSize];
             for(int i=0;i<_frameSize;i++){
                 window[i]=1.;
             }
         }
+        Conductor(Conductor& src);
         std::vector<double> doFFT(std::vector<double> inputSeries);
         std::vector<std::vector<double>> nextFrameFFT();
         json loadMeta();
+        void setInd(uint32_t i){frameCount=i;}
         ~Conductor();
     };
 
@@ -159,6 +165,35 @@ namespace dSTFT{
         metadata __meta;
     };
 
+    class SpctRunTime:public Spectrum{
+        public:
+        enum Mode{
+            NORMAL,ORIGIN
+        };
+        const double* operator[](int i) override;
+        const double* readNextFrame() override;
+        bool seek(uint32_t n) override;
+        uint32_t presentFrame() override;
+        metadata meta() override;
+        Spectrum* copyHandle() override;
+        SpctRunTime(Conductor& cdt,metadata meta,uint8_t channelId)
+        :cdt(cdt),frame(0),__meta(meta),channelId(channelId){
+            obuf=new double[__meta.binCount];
+            mode=NORMAL;
+        }
+        Mode mode;
+        void setMode(Mode m){
+            mode=m;
+        }
+        ~SpctRunTime();
+        private:
+        Conductor cdt;
+        double* obuf;
+        uint8_t channelId;
+        uint32_t frame;
+        metadata __meta;
+    };
+
 
     class Loader{
         private:
@@ -173,7 +208,9 @@ namespace dSTFT{
 
         int LoadToFile();
         SpctCollected LoadToMemory();
+        SpctCollected LoadRunTime();
         static SpctCollected CollectFromFile(std::string fileName);
+        std::unique_ptr<Spectrum> getRawPCM(uint8_t channelId);
         SpctCollected Load(LoadMode mode);
         void setWindow(WindowType type);
 

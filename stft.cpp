@@ -56,6 +56,15 @@ std::vector<std::vector<double>> SoundFile::SplitChannels(std::vector<double> ra
     return data;
 }
 
+std::vector<double> SoundFile::getChannel(std::vector<double>& rawFrames,uint8_t channelId){
+    uint32_t frameCount=rawFrames.size()/info->channels;
+    std::vector<double> data(frameCount);
+    for(uint32_t i=0;i<frameCount;i++){
+        data[i]=rawFrames[channelId+i*info->channels];
+    }
+    return data;
+}
+
 void SoundFile::printInfo(){
     using namespace std;
     cout<<"SoundFile Info-----------------------------\n";
@@ -69,6 +78,32 @@ void SoundFile::printInfo(){
 
 }
 
+Conductor::Conductor(Conductor& src):
+soundFile(src.soundFile),stride(src.stride),frameCount(src.frameCount),frameMax(src.frameMax),frameSize(src.frameSize){
+    in=(fftw_complex*)fftw_malloc(sizeof(fftw_complex)*frameSize);
+    out=(fftw_complex*)fftw_malloc(sizeof(fftw_complex)*frameSize);
+    if(in==NULL||out==NULL){
+        std::cerr<<"CONDUCTOR:INSUFFICIENT AVAILABLE MEMORY\n";
+        return;
+    }
+    if(!soundFile.available){
+        std::cerr<<"CONDUCTOR:SOUNDFILE NOT AVAILABLE\n";
+        return;
+    }
+    plan=fftw_plan_dft_1d(frameSize,in,out,FFTW_FORWARD,FFTW_MEASURE);
+    if(soundFile.info->frames<frameSize){
+        std::cerr<<"WINDOW SIZE BIGGER THAN TOTAL FRAME(SAMPLE) COUNT\n";
+        return;
+    }
+    available=true;
+    doLog=src.doLog;
+
+    window=(double*)malloc(sizeof(double)*frameSize);
+    for(int i=0;i<frameSize;i++){
+        window[i]=src.window[i];
+    }
+}
+
 std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
     for(uint32_t i=0;i<this->frameSize;i++){
         in[i][0]=inputSeries[i]*window[i];
@@ -76,7 +111,12 @@ std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
     }
     fftw_execute(plan);
     std::vector<double> outputSeries;
+    outputSeries.reserve(this->frameSize);
     for(uint32_t i=0;i<this->frameSize;i++){
+        if(doLog){
+            outputSeries.push_back(log2(sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1])+1.));
+        }
+        else
         outputSeries.push_back((out[i][0]*out[i][0]+out[i][1]*out[i][1]));
     }
     return outputSeries;
@@ -186,13 +226,13 @@ SpctCollected Loader::CollectFromFile(std::string fileName){
         std::FILE* fpSpec = fopen(specFile.c_str(), "rb");
         std::string psFile = fileName + "-c" + std::to_string(i) + "-ps";
         std::FILE* fpPs = fopen(psFile.c_str(), "rb");
-        if(!fpSpec||!fpPs){
+        if(!fpSpec){
             std::cerr<<"SPECTRUM NOT COMPLETE\n";
             return result;
         }
 
         result.channel.push_back(std::unique_ptr<SpctFromFile>(new SpctFromFile(fpSpec,result.meta,specFile)));
-        result.presum.push_back(std::make_unique<SpctFromFile>(fpPs, result.meta,psFile));
+        if(fpPs) result.presum.push_back(std::make_unique<SpctFromFile>(fpPs, result.meta,psFile));
     }
 
     result.valid = true;
@@ -322,13 +362,36 @@ SpctCollected Loader::LoadToMemory(){
     return o;
 }
 
+SpctCollected Loader::LoadRunTime(){ 
+    // SpctCollected o;`
+    json m__=cdt.loadMeta();
+    Spectrum::metadata meta; 
+    meta.binCount=m__.at("binCount");
+    meta.frames=m__.at("frames");
+    meta.samplerate=m__.at("samplerate");
+    meta.stride=m__.at("stride");
+
+    SpctCollected o;
+    o.meta=meta;
+
+    for(int i=0;i<cdt.soundFile.info->channels;i++){
+        o.channel.push_back(std::unique_ptr<SpctRunTime>(new SpctRunTime(cdt,meta,i)));
+        // o.channel[o.channel.size()-1].
+        // o.presum.push_back(std::unique_ptr<SpctRunTime>(new SpctRunTime(cdt,meta,i)));
+    }
+    return o;
+}
+
 SpctCollected Loader::Load(LoadMode mode){
     if(mode==LoadMode::FILE){
         LoadToFile();
         return CollectFromFile(cdt.soundFile.fileName);
     }else if(mode==LoadMode::MEMORY){
         return LoadToMemory();
+    }else if(mode==LoadMode::RUNTIME){
+        return LoadRunTime();
     }
+
 }
 
 SpctFromFile::SpctFromFile(std::FILE* _file,metadata _data,std::string _name){
@@ -438,4 +501,69 @@ void Loader::setWindow(WindowType type){
     if(type==hann){
         hanning(cdt.window,cdt.frameSize);
     }
+}
+
+const double* SpctRunTime::operator[](int i){
+    if(i==frame) return obuf;
+    auto rawdata=cdt.soundFile.ReadChunk(i*cdt.stride,cdt.frameSize);
+    // if(rawdata.size()<cdt.frameSize*cdt.soundFile.info->channels){
+        
+    // }
+    int k=rawdata.size();
+    rawdata.resize(cdt.frameSize*cdt.soundFile.info->channels);
+    for(int i=k;i<rawdata.size();i++){
+        rawdata[i]=0.;
+    }
+
+    // auto data=cdt.soundFile.SplitChannels(std::move(rawdata));
+
+    auto ch=cdt.soundFile.getChannel(rawdata,channelId);
+
+    if(mode==ORIGIN){
+        memcpy(obuf,ch.data(),ch.size()*sizeof(double));
+        return obuf;
+    }
+
+    auto fftdata=cdt.doFFT(ch);
+
+    memcpy(obuf,fftdata.data(),__meta.binCount*sizeof(double));
+    frame=i;
+    return obuf;
+}
+
+const double* SpctRunTime::readNextFrame(){ 
+    return operator[](++frame);
+}
+
+bool SpctRunTime::seek(uint32_t n){
+    if(n>cdt.frameCount) return false;
+    frame=n;
+    return true;
+}
+
+uint32_t SpctRunTime::presentFrame(){
+    return frame;
+}
+
+Spectrum* SpctRunTime::copyHandle(){
+    return new SpctRunTime(cdt,__meta,channelId);
+}
+
+Spectrum::metadata SpctRunTime::meta(){
+    return __meta;
+}
+
+SpctRunTime::~SpctRunTime(){
+    delete[] obuf;
+}
+
+std::unique_ptr<Spectrum> Loader::getRawPCM(uint8_t channelId){
+    Spectrum::metadata meta; 
+    meta.binCount=cdt.frameSize;
+    meta.frames=cdt.frameMax;
+    meta.samplerate=cdt.soundFile.info->samplerate;
+    meta.stride=cdt.stride;
+    SpctRunTime* spct=new SpctRunTime(cdt,meta,channelId);
+    spct->mode=SpctRunTime::ORIGIN;
+    return std::unique_ptr<Spectrum>(spct);
 }
