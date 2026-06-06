@@ -178,7 +178,7 @@ namespace dSTFT{
         Spectrum* copyHandle() override;
         SpctRunTime(Conductor& cdt,metadata meta,uint8_t channelId)
         :cdt(cdt),frame(0),__meta(meta),channelId(channelId){
-            obuf=new double[__meta.binCount];
+            obuf=new double[cdt.frameSize];
             mode=NORMAL;
         }
         Mode mode;
