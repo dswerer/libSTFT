@@ -546,7 +546,9 @@ uint32_t SpctRunTime::presentFrame(){
 }
 
 Spectrum* SpctRunTime::copyHandle(){
-    return new SpctRunTime(cdt,__meta,channelId);
+    auto p= new SpctRunTime(cdt,__meta,channelId);
+    p->mode=mode;
+    return p;
 }
 
 Spectrum::metadata SpctRunTime::meta(){
