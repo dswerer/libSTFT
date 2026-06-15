@@ -196,9 +196,9 @@ namespace dSTFT{
 
 
     class Loader{
-        private:
-        Conductor cdt;
         public:
+
+        Conductor cdt;
         bool available;
         // Loader(SoundFile&& sf);
         // Loader(SoundFile&& sf,uint32_t stride,uint32_t frameSize);

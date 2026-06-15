@@ -114,7 +114,7 @@ std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
     outputSeries.reserve(this->frameSize);
     for(uint32_t i=0;i<this->frameSize;i++){
         if(doLog){
-            outputSeries.push_back(log2(sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1])+1.));
+            outputSeries.push_back(log2(sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1])));
         }
         else
         outputSeries.push_back((out[i][0]*out[i][0]+out[i][1]*out[i][1]));
@@ -567,5 +567,5 @@ std::unique_ptr<Spectrum> Loader::getRawPCM(uint8_t channelId){
     meta.stride=cdt.stride;
     SpctRunTime* spct=new SpctRunTime(cdt,meta,channelId);
     spct->mode=SpctRunTime::ORIGIN;
-    return std::unique_ptr<Spectrum>(spct);
+    return std::move(std::unique_ptr<Spectrum>(spct));
 }
