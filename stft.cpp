@@ -120,7 +120,7 @@ std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
         else
         o=(out[i][0]*out[i][0]+out[i][1]*out[i][1]);
         if(boostHF){
-            o*=(double)i/this->frameSize;
+            o*=(double)i/this->frameSize+1.;
         }
         outputSeries.push_back(o);
     }
