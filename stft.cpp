@@ -114,7 +114,7 @@ std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
     outputSeries.reserve(this->frameSize);
     for(uint32_t i=0;i<this->frameSize;i++){
         if(doLog){
-            outputSeries.push_back(log2(sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1])));
+            outputSeries.push_back(log2(sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1])+1));
         }
         else
         outputSeries.push_back((out[i][0]*out[i][0]+out[i][1]*out[i][1]));
