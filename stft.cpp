@@ -113,11 +113,16 @@ std::vector<double> Conductor::doFFT(std::vector<double> inputSeries){
     std::vector<double> outputSeries;
     outputSeries.reserve(this->frameSize);
     for(uint32_t i=0;i<this->frameSize;i++){
+        float o;
         if(doLog){
-            outputSeries.push_back(log2(sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1])+1));
+            o=log2(sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1])+1);
         }
         else
-        outputSeries.push_back((out[i][0]*out[i][0]+out[i][1]*out[i][1]));
+        o=(out[i][0]*out[i][0]+out[i][1]*out[i][1]);
+        if(boostHF){
+            o*=(double)i/this->frameSize;
+        }
+        outputSeries.push_back(o);
     }
     return outputSeries;
 }

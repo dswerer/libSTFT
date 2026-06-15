@@ -65,9 +65,10 @@ namespace dSTFT{
         uint8_t end;
         bool available;
         bool doLog;
+        bool boostHF;
         Conductor(SoundFile&& _soundfile,uint32_t _stride,uint32_t _frameSize)
         :soundFile(std::move(_soundfile)),stride(_stride),frameSize(_frameSize),
-        frameCount(0),end(0){
+        frameCount(0),end(0),boostHF(false){
             available=false;
             // window=std::vector<double>(frameSize,0.0);
             in=(fftw_complex*)fftw_malloc(sizeof(fftw_complex)*frameSize);
